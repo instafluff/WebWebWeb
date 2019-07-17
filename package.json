@@ -1,0 +1,29 @@
+{
+  "name": "webwebweb",
+  "version": "1.0.0",
+  "description": "The Comfiest Way to make web APIs and static file servers",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/instafluff/WebWebWeb.git"
+  },
+  "keywords": [
+    "Instafluff",
+    "Comfy",
+    "web",
+    "api",
+    "static",
+    "file",
+    "http",
+    "server"
+  ],
+  "author": "Instafluff",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/instafluff/WebWebWeb/issues"
+  },
+  "homepage": "https://github.com/instafluff/WebWebWeb#readme"
+}
