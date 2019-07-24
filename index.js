@@ -22,7 +22,9 @@ const mimeType = {
   '.ttf': 'aplication/font-sfnt'
 };
 
-console.log( path.resolve( "." ) );
+function isAsync( fn ) {
+   return fn.constructor.name === 'AsyncFunction';
+}
 
 function startServer( port ) {
   http.createServer( async ( req, res ) => {
@@ -58,10 +60,16 @@ function startServer( port ) {
     else {
       if( comfyWeb.APIs[ parsedUrl.pathname ] ) {
         var qs = querystring.decode( req.url.split( "?" )[ 1 ] );
-        var result = comfyWeb.APIs[ parsedUrl.pathname ]( qs );
-        // TODO: check if result is a Promise so that we resolve first
-        res.setHeader( 'Content-type', 'application/json' );
-        res.end( JSON.stringify( result ) );
+        if( isAsync( comfyWeb.APIs[ parsedUrl.pathname ] ) ) {
+          var result = await comfyWeb.APIs[ parsedUrl.pathname ]( qs );
+          res.setHeader( 'Content-type', 'application/json' );
+          res.end( JSON.stringify( result ) );
+        }
+        else {
+          var result = comfyWeb.APIs[ parsedUrl.pathname ]( qs );
+          res.setHeader( 'Content-type', 'application/json' );
+          res.end( JSON.stringify( result ) );
+        }
       }
       else {
         res.statusCode = 500;
