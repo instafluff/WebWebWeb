@@ -26,6 +26,32 @@ function isAsync( fn ) {
    return fn.constructor.name === 'AsyncFunction';
 }
 
+function serveFile( pathname, res ) {
+  fs.exists( pathname, function ( exist ) {
+    if( !exist ) {
+      res.statusCode = 404;
+      res.end(`File ${pathname} not found!`);
+      return;
+    }
+
+    if( fs.statSync(pathname).isDirectory() ) {
+      pathname += '/index.html';
+    }
+
+    fs.readFile(pathname, function(err, data){
+      if( err ){
+        res.statusCode = 500;
+        res.end(`Error getting the file: ${err}.`);
+      }
+      else {
+        const ext = path.parse(pathname).ext;
+        res.setHeader( 'Content-type', mimeType[ ext ] || 'text/plain' );
+        res.end( data );
+      }
+    });
+  });
+}
+
 function startServer( port ) {
   http.createServer( async ( req, res ) => {
     const parsedUrl = url.parse( req.url );
@@ -33,29 +59,7 @@ function startServer( port ) {
         req.url.startsWith( "/public" ) ) {
       const sanitizePath = path.normalize( parsedUrl.pathname ).replace( /^(\.\.[\/\\])+/, '' );
       let pathname = path.join( path.resolve( "." ), sanitizePath );
-      fs.exists( pathname, function ( exist ) {
-        if( !exist ) {
-          res.statusCode = 404;
-          res.end(`File ${pathname} not found!`);
-          return;
-        }
-
-        if( fs.statSync(pathname).isDirectory() ) {
-          pathname += '/index.html';
-        }
-
-        fs.readFile(pathname, function(err, data){
-          if( err ){
-            res.statusCode = 500;
-            res.end(`Error getting the file: ${err}.`);
-          }
-          else {
-            const ext = path.parse(pathname).ext;
-            res.setHeader( 'Content-type', mimeType[ ext ] || 'text/plain' );
-            res.end( data );
-          }
-        });
-      });
+      serveFile( pathname, res );
     }
     else {
       if( comfyWeb.APIs[ parsedUrl.pathname ] ) {
@@ -72,8 +76,21 @@ function startServer( port ) {
         }
       }
       else {
-        res.statusCode = 500;
-        res.end(`Error`);
+        const sanitizePath = path.normalize( parsedUrl.pathname ).replace( /^(\.\.[\/\\])+/, '' );
+        let pathname = path.join( path.resolve( "./web" ), sanitizePath );
+        if( fs.existsSync( pathname ) ) {
+          serveFile( pathname, res );
+        }
+        else {
+          pathname = path.join( path.resolve( "./public" ), sanitizePath );
+          if( fs.existsSync( pathname ) ) {
+            serveFile( pathname, res );
+          }
+          else {
+            res.statusCode = 500;
+            res.end(`Error`);
+          }
+        }
       }
     }
   }).listen( port );
