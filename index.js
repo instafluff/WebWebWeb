@@ -1,4 +1,3 @@
-const http = require( "http" );
 const url = require('url');
 const fs = require('fs');
 const path = require('path');
@@ -52,62 +51,80 @@ function serveFile( pathname, res ) {
   });
 }
 
-function startServer( port, { useCORS } = { useCORS: true } ) {
-  http.createServer( async ( req, res ) => {
-    if( useCORS ) {
-      // Handle CORS
-      res.setHeader( 'Access-Control-Allow-Origin', '*' );
-      res.setHeader( 'Access-Control-Request-Method', '*' );
-      res.setHeader( 'Access-Control-Allow-Methods', 'OPTIONS, GET, PUT, POST, DELETE' );
-      res.setHeader( 'Access-Control-Allow-Headers', '*' );
-      if( req.method === 'OPTIONS' ) {
-        res.writeHead( 204 );
-        res.end();
-        return;
-      }
+async function webHandler( req, res ) {
+  if( useCORS ) {
+    // Handle CORS
+    res.setHeader( 'Access-Control-Allow-Origin', '*' );
+    res.setHeader( 'Access-Control-Request-Method', '*' );
+    res.setHeader( 'Access-Control-Allow-Methods', 'OPTIONS, GET, PUT, POST, DELETE' );
+    res.setHeader( 'Access-Control-Allow-Headers', '*' );
+    if( req.method === 'OPTIONS' ) {
+      res.writeHead( 204 );
+      res.end();
+      return;
     }
+  }
 
-    const parsedUrl = url.parse( req.url );
-    if( req.url.startsWith( "/web" ) ||
-        req.url.startsWith( "/public" ) ) {
-      const sanitizePath = path.normalize( parsedUrl.pathname ).replace( /^(\.\.[\/\\])+/, '' );
-      let pathname = path.join( path.resolve( "." ), sanitizePath );
-      serveFile( pathname, res );
-    }
-    else {
-      var urlPath = comfyWeb.APIs[ parsedUrl.pathname ] ? parsedUrl.pathname : parsedUrl.pathname.substring( 1 );
-      if( comfyWeb.APIs[ urlPath ] ) {
-        var qs = querystring.decode( req.url.split( "?" )[ 1 ] );
-        if( isAsync( comfyWeb.APIs[ urlPath ] ) ) {
-          var result = await comfyWeb.APIs[ urlPath ]( qs );
-          res.setHeader( 'Content-type', 'application/json' );
-          res.end( JSON.stringify( result ) );
-        }
-        else {
-          var result = comfyWeb.APIs[ urlPath ]( qs );
-          res.setHeader( 'Content-type', 'application/json' );
-          res.end( JSON.stringify( result ) );
-        }
+  const parsedUrl = url.parse( req.url );
+  if( req.url.startsWith( "/web" ) ||
+      req.url.startsWith( "/public" ) ) {
+    const sanitizePath = path.normalize( parsedUrl.pathname ).replace( /^(\.\.[\/\\])+/, '' );
+    let pathname = path.join( path.resolve( "." ), sanitizePath );
+    serveFile( pathname, res );
+  }
+  else {
+    var urlPath = comfyWeb.APIs[ parsedUrl.pathname ] ? parsedUrl.pathname : parsedUrl.pathname.substring( 1 );
+    if( comfyWeb.APIs[ urlPath ] ) {
+      var qs = querystring.decode( req.url.split( "?" )[ 1 ] );
+      if( isAsync( comfyWeb.APIs[ urlPath ] ) ) {
+        var result = await comfyWeb.APIs[ urlPath ]( qs );
+        res.setHeader( 'Content-type', 'application/json' );
+        res.end( JSON.stringify( result ) );
       }
       else {
-        const sanitizePath = path.normalize( parsedUrl.pathname ).replace( /^(\.\.[\/\\])+/, '' );
-        let pathname = path.join( path.resolve( "./web" ), sanitizePath );
+        var result = comfyWeb.APIs[ urlPath ]( qs );
+        res.setHeader( 'Content-type', 'application/json' );
+        res.end( JSON.stringify( result ) );
+      }
+    }
+    else {
+      const sanitizePath = path.normalize( parsedUrl.pathname ).replace( /^(\.\.[\/\\])+/, '' );
+      let pathname = path.join( path.resolve( "./web" ), sanitizePath );
+      if( fs.existsSync( pathname ) ) {
+        serveFile( pathname, res );
+      }
+      else {
+        pathname = path.join( path.resolve( "./public" ), sanitizePath );
         if( fs.existsSync( pathname ) ) {
           serveFile( pathname, res );
         }
         else {
-          pathname = path.join( path.resolve( "./public" ), sanitizePath );
-          if( fs.existsSync( pathname ) ) {
-            serveFile( pathname, res );
-          }
-          else {
-            res.statusCode = 500;
-            res.end(`Error`);
-          }
+          res.statusCode = 500;
+          res.end(`Error`);
         }
       }
     }
-  }).listen( port, ( err ) => {
+  }
+}
+
+function startServer( port, { useCORS, Certificate, PrivateKey, CertificateChain } = { useCORS: true } ) {
+  var server;
+  if( Certificate && PrivateKey ) {
+    const privateKey = fs.readFileSync( PrivateKey, 'utf8' );
+    const certificate = fs.readFileSync( Certificate, 'utf8' );
+    const ca = fs.readFileSync( CertificateChain, 'utf8' );
+    const credentials = {
+      key: privateKey,
+      cert: certificate,
+      ca: ca
+    };
+    server = require( 'https' ).createServer( credentials, webHandler );
+  }
+  else {
+    server = require( 'http' ).createServer( webHandler );
+  }
+
+  server.listen( port, ( err ) => {
     if( err ) {
       return console.log( 'WebWebWeb could not start:', err );
     }
