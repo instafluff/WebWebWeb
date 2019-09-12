@@ -75,15 +75,16 @@ function startServer( port, { useCORS } = { useCORS: true } ) {
       serveFile( pathname, res );
     }
     else {
-      if( comfyWeb.APIs[ parsedUrl.pathname ] ) {
+      var urlPath = comfyWeb.APIs[ parsedUrl.pathname ] ? parsedUrl.pathname : parsedUrl.pathname.substring( 1 );
+      if( comfyWeb.APIs[ urlPath ] ) {
         var qs = querystring.decode( req.url.split( "?" )[ 1 ] );
-        if( isAsync( comfyWeb.APIs[ parsedUrl.pathname ] ) ) {
-          var result = await comfyWeb.APIs[ parsedUrl.pathname ]( qs );
+        if( isAsync( comfyWeb.APIs[ urlPath ] ) ) {
+          var result = await comfyWeb.APIs[ urlPath ]( qs );
           res.setHeader( 'Content-type', 'application/json' );
           res.end( JSON.stringify( result ) );
         }
         else {
-          var result = comfyWeb.APIs[ parsedUrl.pathname ]( qs );
+          var result = comfyWeb.APIs[ urlPath ]( qs );
           res.setHeader( 'Content-type', 'application/json' );
           res.end( JSON.stringify( result ) );
         }

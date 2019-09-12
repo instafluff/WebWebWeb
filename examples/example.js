@@ -5,7 +5,7 @@ ComfyWeb.APIs[ "/" ] = ( qs ) => {
   return { "test": "example!" };
 };
 
-ComfyWeb.APIs[ "/color" ] = ( qs ) => {
+ComfyWeb.APIs[ "color" ] = ( qs ) => {
   console.log( qs );
   return { "color": "RED" };
 };
