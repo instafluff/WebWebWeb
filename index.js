@@ -52,8 +52,21 @@ function serveFile( pathname, res ) {
   });
 }
 
-function startServer( port ) {
+function startServer( port, { useCORS } = { useCORS: true } ) {
   http.createServer( async ( req, res ) => {
+    if( useCORS ) {
+      // Handle CORS
+      res.setHeader( 'Access-Control-Allow-Origin', '*' );
+      res.setHeader( 'Access-Control-Request-Method', '*' );
+      res.setHeader( 'Access-Control-Allow-Methods', 'OPTIONS, GET, PUT, POST, DELETE' );
+      res.setHeader( 'Access-Control-Allow-Headers', '*' );
+      if( req.method === 'OPTIONS' ) {
+        res.writeHead( 204 );
+        res.end();
+        return;
+      }
+    }
+
     const parsedUrl = url.parse( req.url );
     if( req.url.startsWith( "/web" ) ||
         req.url.startsWith( "/public" ) ) {
@@ -93,7 +106,12 @@ function startServer( port ) {
         }
       }
     }
-  }).listen( port );
+  }).listen( port, ( err ) => {
+    if( err ) {
+      return console.log( 'WebWebWeb could not start:', err );
+    }
+    console.log( `WebWebWeb is running on ${port}` );
+  } );
 }
 
 var comfyWeb = {
