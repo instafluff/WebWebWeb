@@ -51,8 +51,10 @@ function serveFile( pathname, res ) {
   });
 }
 
+var isCORSEnabled = true;
+
 async function webHandler( req, res ) {
-  if( useCORS ) {
+  if( isCORSEnabled ) {
     // Handle CORS
     res.setHeader( 'Access-Control-Allow-Origin', '*' );
     res.setHeader( 'Access-Control-Request-Method', '*' );
@@ -109,6 +111,7 @@ async function webHandler( req, res ) {
 
 function startServer( port, { useCORS, Certificate, PrivateKey, CertificateChain } = { useCORS: true } ) {
   var server;
+  isCORSEnabled = useCORS;
   if( Certificate && PrivateKey ) {
     const privateKey = fs.readFileSync( PrivateKey, 'utf8' );
     const certificate = fs.readFileSync( Certificate, 'utf8' );
