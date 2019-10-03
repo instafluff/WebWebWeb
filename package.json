@@ -1,6 +1,6 @@
 {
   "name": "webwebweb",
-  "version": "1.1.3",
+  "version": "1.1.4",
   "description": "The Comfiest Way to make web APIs and static file servers",
   "main": "index.js",
   "scripts": {
