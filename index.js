@@ -101,8 +101,15 @@ async function webHandler( req, res ) {
           serveFile( pathname, res );
         }
         else {
-          res.statusCode = 500;
-          res.end(`Error`);
+          pathname = path.join( path.resolve( "./" ), sanitizePath );
+          pathname += '/index.html';
+          if( fs.existsSync( pathname ) ) {
+            serveFile( pathname, res );
+          }
+          else {
+            res.statusCode = 500;
+            res.end(`Error`);
+          }
         }
       }
     }
