@@ -91,18 +91,17 @@ async function webHandler( req, res ) {
     }
     else {
       const sanitizePath = path.normalize( parsedUrl.pathname ).replace( /^(\.\.[\/\\])+/, '' );
-      let pathname = path.join( path.resolve( "./web" ), sanitizePath );
+      let pathname = path.join( path.resolve( "index.html" ), sanitizePath );
       if( fs.existsSync( pathname ) ) {
         serveFile( pathname, res );
       }
       else {
-        pathname = path.join( path.resolve( "./public" ), sanitizePath );
+        pathname = path.join( path.resolve( "./web" ), sanitizePath );
         if( fs.existsSync( pathname ) ) {
           serveFile( pathname, res );
         }
         else {
-          pathname = path.join( path.resolve( "./" ), sanitizePath );
-          pathname += '/index.html';
+          pathname = path.join( path.resolve( "./public" ), sanitizePath );
           if( fs.existsSync( pathname ) ) {
             serveFile( pathname, res );
           }
