@@ -91,7 +91,7 @@ async function webHandler( req, res ) {
     }
     else {
       const sanitizePath = path.normalize( parsedUrl.pathname ).replace( /^(\.\.[\/\\])+/, '' );
-      let pathname = path.join( path.resolve( "index.html" ), sanitizePath );
+      let pathname = path.join( path.resolve( "index.html" ), sanitizePath ).replace( /\/$/, "" );
       if( fs.existsSync( pathname ) ) {
         serveFile( pathname, res );
       }
