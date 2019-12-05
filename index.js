@@ -139,6 +139,8 @@ function startServer( port, { useCORS, Certificate, PrivateKey, CertificateChain
     }
     console.log( `WebWebWeb is running on ${port}` );
   } );
+
+  return server;
 }
 
 var comfyWeb = {
