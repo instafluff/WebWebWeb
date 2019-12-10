@@ -78,15 +78,35 @@ async function webHandler( req, res ) {
     var urlPath = comfyWeb.APIs[ parsedUrl.pathname ] ? parsedUrl.pathname : parsedUrl.pathname.substring( 1 );
     if( comfyWeb.APIs[ urlPath ] ) {
       var qs = querystring.decode( req.url.split( "?" )[ 1 ] );
-      if( isAsync( comfyWeb.APIs[ urlPath ] ) ) {
-        var result = await comfyWeb.APIs[ urlPath ]( qs );
-        res.setHeader( 'Content-type', 'application/json' );
-        res.end( JSON.stringify( result ) );
+      if( req.method === "POST" ) {
+        let body = '';
+        req.on('data', chunk => {
+          body += chunk.toString();
+        });
+        req.on('end', async () => {
+          if( isAsync( comfyWeb.APIs[ urlPath ] ) ) {
+            var result = await comfyWeb.APIs[ urlPath ]( qs, body );
+            res.setHeader( 'Content-type', 'application/json' );
+            res.end( JSON.stringify( result ) );
+          }
+          else {
+            var result = comfyWeb.APIs[ urlPath ]( qs, body );
+            res.setHeader( 'Content-type', 'application/json' );
+            res.end( JSON.stringify( result ) );
+          }
+        });
       }
       else {
-        var result = comfyWeb.APIs[ urlPath ]( qs );
-        res.setHeader( 'Content-type', 'application/json' );
-        res.end( JSON.stringify( result ) );
+        if( isAsync( comfyWeb.APIs[ urlPath ] ) ) {
+          var result = await comfyWeb.APIs[ urlPath ]( qs );
+          res.setHeader( 'Content-type', 'application/json' );
+          res.end( JSON.stringify( result ) );
+        }
+        else {
+          var result = comfyWeb.APIs[ urlPath ]( qs );
+          res.setHeader( 'Content-type', 'application/json' );
+          res.end( JSON.stringify( result ) );
+        }
       }
     }
     else {

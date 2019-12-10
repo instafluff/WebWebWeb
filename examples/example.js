@@ -1,7 +1,8 @@
 const ComfyWeb = require( "../index" );
 
-ComfyWeb.APIs[ "/" ] = ( qs ) => {
+ComfyWeb.APIs[ "/" ] = ( qs, body ) => {
   console.log( qs );
+  console.log( body );
   return { "test": "example!" };
 };
 
