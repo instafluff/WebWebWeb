@@ -125,8 +125,8 @@ async function webHandler( req, res ) {
           if( fs.existsSync( pathname ) ) {
             serveFile( pathname, res );
           }
-          else if( sanitizePath.endsWith( ".html" ) && fs.existsSync( sanitizePath ) ) {
-            serveFile( pathname, res );
+          else if( ( sanitizePath.endsWith( ".html" ) || sanitizePath.endsWith( ".css" ) ) && fs.existsSync( path.join( path.resolve( "./" ), sanitizePath ) ) ) {
+            serveFile( path.join( path.resolve( "./" ), sanitizePath ), res );
           }
           else {
             res.statusCode = 500;
