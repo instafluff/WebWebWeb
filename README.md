@@ -31,6 +31,6 @@ ComfyWeb.Run( 8099 );
 ```
 
 ## Credits ##
-Thank you too all the participants of this project!
+Thank you to all the participants of this project!
 
 **MacABearMan, Instafriend, That_MS_Gamer, Instafluff, ChatTranslator, sethorizer, simrose4u, Gilokk0, RIKACHET, UltraHal1, SaltPrincessGretchen, Ella_Fint, DutchGamer46, AntiViGames, aj2017, SoundOfGaming, DEAD_P1XL, smilesandtea, MerlinLeWizard, my_sweet_clementine, rockysenpai24, tabetaicooking, sparky_pugwash, violettepanda, TheSkiDragon, radiocaf, LinkoNetwork, jawibae, ElysiaGriffin, DarrnyH, jellydance, DevMerlin, marss112, roberttables, tiger_k1ng, LilyHazel, Psychosys82, BungalowGlow, Stay_Hydrated_Bot, pookiepew, Copperbeardy, TheHugoDahl, wil_bennett, WolvesGamingDen, FuriousFur, SausageCam, Kyoslilmonster, EndlessMoonfall, JD_Hirsch, guthron, shinageeexpress, JMSWRNR, schmiel_show, KitAnnLIVE, space_butts, lukepistachio, pipskidoodle, Kara_Kim, SIeepyMia, itsmechrisg, tapemoose, XandyCTz, Thrennenne, kollecz, Hytheria, YoursTrulyGreed**
