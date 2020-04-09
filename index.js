@@ -85,12 +85,12 @@ async function webHandler( req, res ) {
         });
         req.on('end', async () => {
           if( isAsync( comfyWeb.APIs[ urlPath ] ) ) {
-            var result = await comfyWeb.APIs[ urlPath ]( qs, body );
+            var result = await comfyWeb.APIs[ urlPath ]( qs, body, { req, res } );
             res.setHeader( 'Content-type', 'application/json' );
             res.end( JSON.stringify( result ) );
           }
           else {
-            var result = comfyWeb.APIs[ urlPath ]( qs, body );
+            var result = comfyWeb.APIs[ urlPath ]( qs, body, { req, res } );
             res.setHeader( 'Content-type', 'application/json' );
             res.end( JSON.stringify( result ) );
           }
@@ -98,12 +98,12 @@ async function webHandler( req, res ) {
       }
       else {
         if( isAsync( comfyWeb.APIs[ urlPath ] ) ) {
-          var result = await comfyWeb.APIs[ urlPath ]( qs );
+          var result = await comfyWeb.APIs[ urlPath ]( qs, null, { req, res } );
           res.setHeader( 'Content-type', 'application/json' );
           res.end( JSON.stringify( result ) );
         }
         else {
-          var result = comfyWeb.APIs[ urlPath ]( qs );
+          var result = comfyWeb.APIs[ urlPath ]( qs, null, { req, res } );
           res.setHeader( 'Content-type', 'application/json' );
           res.end( JSON.stringify( result ) );
         }
