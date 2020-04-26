@@ -11,4 +11,14 @@ ComfyWeb.APIs[ "color" ] = ( qs ) => {
   return { "color": "RED" };
 };
 
+ComfyWeb.APIs[ "string" ] = ( qs ) => {
+  console.log( qs );
+  return "test string";
+};
+
+ComfyWeb.APIs[ "array" ] = ( qs ) => {
+  console.log( qs );
+  return [ "one", "2", "three" ];
+};
+
 ComfyWeb.Run( 8099 );

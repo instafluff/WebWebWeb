@@ -25,6 +25,14 @@ function isAsync( fn ) {
    return fn.constructor.name === 'AsyncFunction';
 }
 
+function isArray( o ) {
+    return ( !!o ) && ( o.constructor === Array );
+}
+
+function isObject( o ) {
+    return ( !!o ) && ( o.constructor === Object );
+}
+
 function serveFile( pathname, res ) {
   fs.exists( pathname, function ( exist ) {
     if( !exist ) {
@@ -86,26 +94,50 @@ async function webHandler( req, res ) {
         req.on('end', async () => {
           if( isAsync( comfyWeb.APIs[ urlPath ] ) ) {
             var result = await comfyWeb.APIs[ urlPath ]( qs, body, { req, res } );
-            res.setHeader( 'Content-type', 'application/json' );
-            res.end( JSON.stringify( result ) );
+            if( isArray( result ) || isObject( result ) ) {
+                res.setHeader( 'Content-type', 'application/json' );
+                res.end( JSON.stringify( result ) );
+            }
+            else {
+                res.setHeader( 'Content-type', 'text/plain' );
+                res.end( result );
+            }
           }
           else {
             var result = comfyWeb.APIs[ urlPath ]( qs, body, { req, res } );
-            res.setHeader( 'Content-type', 'application/json' );
-            res.end( JSON.stringify( result ) );
+            if( isArray( result ) || isObject( result ) ) {
+                res.setHeader( 'Content-type', 'application/json' );
+                res.end( JSON.stringify( result ) );
+            }
+            else {
+                res.setHeader( 'Content-type', 'text/plain' );
+                res.end( result );
+            }
           }
         });
       }
       else {
         if( isAsync( comfyWeb.APIs[ urlPath ] ) ) {
           var result = await comfyWeb.APIs[ urlPath ]( qs, null, { req, res } );
-          res.setHeader( 'Content-type', 'application/json' );
-          res.end( JSON.stringify( result ) );
+          if( isArray( result ) || isObject( result ) ) {
+              res.setHeader( 'Content-type', 'application/json' );
+              res.end( JSON.stringify( result ) );
+          }
+          else {
+              res.setHeader( 'Content-type', 'text/plain' );
+              res.end( result );
+          }
         }
         else {
           var result = comfyWeb.APIs[ urlPath ]( qs, null, { req, res } );
-          res.setHeader( 'Content-type', 'application/json' );
-          res.end( JSON.stringify( result ) );
+          if( isArray( result ) || isObject( result ) ) {
+              res.setHeader( 'Content-type', 'application/json' );
+              res.end( JSON.stringify( result ) );
+          }
+          else {
+              res.setHeader( 'Content-type', 'text/plain' );
+              res.end( result );
+          }
         }
       }
     }
@@ -158,7 +190,7 @@ function startServer( port, { useCORS, Certificate, PrivateKey, CertificateChain
 
   server.listen( port, ( err ) => {
     if( err ) {
-      return console.log( 'WebWebWeb could not start:', err );
+      return console.error( 'WebWebWeb could not start:', err );
     }
     console.log( `WebWebWeb is running on ${port}` );
   } );
