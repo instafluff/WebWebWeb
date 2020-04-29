@@ -23,8 +23,7 @@ npm install webwebweb --save
 
 2. Start the server on a port (e.g. 8099). Any HTML pages (e.g. index.html) can be placed in the root directory `/` and static files (e.g. images, scripts, and other HTML pages) can go into `/web` or `/public` and it will be served automagically in `http://locahost:8099/web` or `http://localhost:8099/public`
 ```javascript
-var ComfyWeb = require( "webwebweb" );
-ComfyWeb.Run( 8099 );
+require( "webwebweb" ).Run( 8099 );
 ```
 
 3. (Optional) Add APIs
