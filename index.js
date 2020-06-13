@@ -87,11 +87,16 @@ async function webHandler( req, res ) {
     if( comfyWeb.APIs[ urlPath ] ) {
       var qs = querystring.decode( req.url.split( "?" )[ 1 ] );
       if( req.method === "POST" ) {
-        let body = '';
-        req.on('data', chunk => {
-          body += chunk.toString();
+        let body = null;
+        req.on( 'data', chunk => {
+          if( body === null ) {
+            body = chunk;
+		  }
+		  else {
+            body = Buffer.concat([ body, chunk ]);
+		  }
         });
-        req.on('end', async () => {
+        req.on( 'end', async () => {
           if( isAsync( comfyWeb.APIs[ urlPath ] ) ) {
             var result = await comfyWeb.APIs[ urlPath ]( qs, body, { req, res } );
             if( isArray( result ) || isObject( result ) ) {
