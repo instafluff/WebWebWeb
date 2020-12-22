@@ -147,10 +147,9 @@ async function webHandler( req, res ) {
       }
     }
     else if( comfyWeb.Files && comfyWeb.Files[ urlPath ] ) {
-        const sanitizePath = path.normalize( parsedUrl.pathname ).replace( /^(\.\.[\/\\])+/, '' );
+        const sanitizePath = path.normalize( urlPath ).replace( /^(\.\.[\/\\])+/, '' );
         let pathname = path.join( path.resolve( "index.html" ), sanitizePath ).replace( /\/$/, "" );
         var qs = querystring.decode( req.url.split( "?" )[ 1 ] );
-
         if( fs.existsSync( pathname ) ) {
             if( isAsync( comfyWeb.Files[ urlPath ] ) ) {
                 await comfyWeb.Files[ urlPath ]( qs, null, { req, res } );
