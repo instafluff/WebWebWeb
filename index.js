@@ -257,6 +257,7 @@ function startServer( port, { useCORS, Certificate, PrivateKey, CertificateChain
 
 var comfyWeb = {
   APIs: {},
+  Files: {},
   Run: startServer
 };
 
