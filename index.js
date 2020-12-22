@@ -45,7 +45,7 @@ function serveFile( pathname, res ) {
       pathname += '/index.html';
     }
 
-    fs.readFile(pathname, function(err, data){
+    fs.readFile( pathname, function( err, data ){
       if( err ){
         res.statusCode = 500;
         res.end(`Error getting the file: ${err}.`);
@@ -84,7 +84,7 @@ async function webHandler( req, res ) {
   }
   else {
     var urlPath = comfyWeb.APIs[ parsedUrl.pathname ] ? parsedUrl.pathname : parsedUrl.pathname.substring( 1 );
-    if( comfyWeb.APIs[ urlPath ] ) {
+    if( comfyWeb.APIs && comfyWeb.APIs[ urlPath ] ) {
       var qs = querystring.decode( req.url.split( "?" )[ 1 ] );
       if( req.method === "POST" ) {
         let body = null;
@@ -145,6 +145,58 @@ async function webHandler( req, res ) {
           }
         }
       }
+    }
+    else if( comfyWeb.Files && comfyWeb.Files[ urlPath ] ) {
+        const sanitizePath = path.normalize( parsedUrl.pathname ).replace( /^(\.\.[\/\\])+/, '' );
+        let pathname = path.join( path.resolve( "index.html" ), sanitizePath ).replace( /\/$/, "" );
+        var qs = querystring.decode( req.url.split( "?" )[ 1 ] );
+
+        if( fs.existsSync( pathname ) ) {
+            if( isAsync( comfyWeb.Files[ urlPath ] ) ) {
+                await comfyWeb.Files[ urlPath ]( qs, null, { req, res } );
+            }
+            else {
+                comfyWeb.Files[ urlPath ]( qs, null, { req, res } );
+            }
+            serveFile( pathname, res );
+        }
+        else {
+          pathname = path.join( path.resolve( "./web" ), sanitizePath );
+          if( fs.existsSync( pathname ) ) {
+              if( isAsync( comfyWeb.Files[ urlPath ] ) ) {
+                  await comfyWeb.Files[ urlPath ]( qs, null, { req, res } );
+              }
+              else {
+                  comfyWeb.Files[ urlPath ]( qs, null, { req, res } );
+              }
+              serveFile( pathname, res );
+          }
+          else {
+            pathname = path.join( path.resolve( "./public" ), sanitizePath );
+            if( fs.existsSync( pathname ) ) {
+                if( isAsync( comfyWeb.Files[ urlPath ] ) ) {
+                    await comfyWeb.Files[ urlPath ]( qs, null, { req, res } );
+                }
+                else {
+                    comfyWeb.Files[ urlPath ]( qs, null, { req, res } );
+                }
+                serveFile( pathname, res );
+            }
+            else if( ( sanitizePath.endsWith( ".html" ) || sanitizePath.endsWith( ".css" ) ) && fs.existsSync( path.join( path.resolve( "./" ), sanitizePath ) ) ) {
+              if( isAsync( comfyWeb.Files[ urlPath ] ) ) {
+                  await comfyWeb.Files[ urlPath ]( qs, null, { req, res } );
+              }
+              else {
+                  comfyWeb.Files[ urlPath ]( qs, null, { req, res } );
+              }
+              serveFile( path.join( path.resolve( "./" ), sanitizePath ), res );
+            }
+            else {
+                res.statusCode = 500;
+                res.end(`Error`);
+            }
+          }
+        }
     }
     else {
       const sanitizePath = path.normalize( parsedUrl.pathname ).replace( /^(\.\.[\/\\])+/, '' );
