@@ -52,7 +52,9 @@ function serveFile( pathname, res ) {
       }
       else {
         const ext = path.parse(pathname).ext;
-        res.setHeader( 'Content-type', mimeType[ ext ] || 'text/plain' );
+        if( !res.getHeader( "Content-Type" ) ) {
+            res.setHeader( 'Content-type', mimeType[ ext ] || 'text/plain' );
+        }
         res.end( data );
       }
     });
@@ -100,22 +102,30 @@ async function webHandler( req, res ) {
           if( isAsync( comfyWeb.APIs[ urlPath ] ) ) {
             var result = await comfyWeb.APIs[ urlPath ]( qs, body, { req, res } );
             if( isArray( result ) || isObject( result ) ) {
-                res.setHeader( 'Content-type', 'application/json' );
+                if( !res.getHeader( "Content-Type" ) ) {
+                    res.setHeader( 'Content-type', 'application/json' );
+                }
                 res.end( JSON.stringify( result ) );
             }
             else {
-                res.setHeader( 'Content-type', 'text/plain' );
+                if( !res.getHeader( "Content-Type" ) ) {
+                    res.setHeader( 'Content-type', 'text/plain' );
+                }
                 res.end( result );
             }
           }
           else {
             var result = comfyWeb.APIs[ urlPath ]( qs, body, { req, res } );
             if( isArray( result ) || isObject( result ) ) {
-                res.setHeader( 'Content-type', 'application/json' );
+                if( !res.getHeader( "Content-Type" ) ) {
+                    res.setHeader( 'Content-type', 'application/json' );
+                }
                 res.end( JSON.stringify( result ) );
             }
             else {
-                res.setHeader( 'Content-type', 'text/plain' );
+                if( !res.getHeader( "Content-Type" ) ) {
+                    res.setHeader( 'Content-type', 'text/plain' );
+                }
                 res.end( result );
             }
           }
@@ -125,22 +135,30 @@ async function webHandler( req, res ) {
         if( isAsync( comfyWeb.APIs[ urlPath ] ) ) {
           var result = await comfyWeb.APIs[ urlPath ]( qs, null, { req, res } );
           if( isArray( result ) || isObject( result ) ) {
-              res.setHeader( 'Content-type', 'application/json' );
+              if( !res.getHeader( "Content-Type" ) ) {
+                  res.setHeader( 'Content-type', 'application/json' );
+              }
               res.end( JSON.stringify( result ) );
           }
           else {
-              res.setHeader( 'Content-type', 'text/plain' );
+              if( !res.getHeader( "Content-Type" ) ) {
+                  res.setHeader( 'Content-type', 'text/plain' );
+              }
               res.end( result );
           }
         }
         else {
           var result = comfyWeb.APIs[ urlPath ]( qs, null, { req, res } );
           if( isArray( result ) || isObject( result ) ) {
-              res.setHeader( 'Content-type', 'application/json' );
+              if( !res.getHeader( "Content-Type" ) ) {
+                  res.setHeader( 'Content-type', 'application/json' );
+              }
               res.end( JSON.stringify( result ) );
           }
           else {
-              res.setHeader( 'Content-type', 'text/plain' );
+              if( !res.getHeader( "Content-Type" ) ) {
+                  res.setHeader( 'Content-type', 'text/plain' );
+              }
               res.end( result );
           }
         }
