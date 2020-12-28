@@ -77,7 +77,7 @@ async function webHandler( req, res ) {
     }
   }
 
-  const parsedUrl = url.parse( req.url );
+  const parsedUrl = url.parse( decodeURI( req.url ) );
   if( req.url.startsWith( "/web" ) ||
       req.url.startsWith( "/public" ) ) {
     const sanitizePath = path.normalize( parsedUrl.pathname ).replace( /^(\.\.[\/\\])+/, '' );
