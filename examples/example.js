@@ -21,4 +21,9 @@ ComfyWeb.APIs[ "array" ] = ( qs ) => {
   return [ "one", "2", "three" ];
 };
 
+ComfyWeb.APIs[ "route/*" ] = ( qs, body, opts ) => {
+    console.log( opts.params );
+    return opts.params;
+};
+
 ComfyWeb.Run( 8099 );
