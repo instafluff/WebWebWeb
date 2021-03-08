@@ -21,10 +21,6 @@ const mimeType = {
   '.ttf': 'aplication/font-sfnt'
 };
 
-function isAsync( fn ) {
-   return fn.constructor.name === 'AsyncFunction';
-}
-
 function isArray( o ) {
     return ( !!o ) && ( o.constructor === Array );
 }
@@ -135,8 +131,7 @@ async function webHandler( req, res ) {
 		  }
         });
         req.on( 'end', async () => {
-          if( isAsync( comfyWeb.APIs[ apiPath ] ) ) {
-            var result = await comfyWeb.APIs[ apiPath ]( qs, body, { req, res, params: apiRoute.params } );
+            var result = await Promise.resolve( comfyWeb.APIs[ apiPath ]( qs, body, { req, res, params: apiRoute.params } ) );
             if( isArray( result ) || isObject( result ) ) {
                 if( !res.getHeader( "Content-Type" ) ) {
                     res.setHeader( 'Content-type', 'application/json' );
@@ -149,27 +144,10 @@ async function webHandler( req, res ) {
                 }
                 res.end( result );
             }
-          }
-          else {
-            var result = comfyWeb.APIs[ apiPath ]( qs, body, { req, res, params: apiRoute.params } );
-            if( isArray( result ) || isObject( result ) ) {
-                if( !res.getHeader( "Content-Type" ) ) {
-                    res.setHeader( 'Content-type', 'application/json' );
-                }
-                res.end( JSON.stringify( result ) );
-            }
-            else {
-                if( !res.getHeader( "Content-Type" ) ) {
-                    res.setHeader( 'Content-type', 'text/plain' );
-                }
-                res.end( result );
-            }
-          }
         });
       }
       else {
-        if( isAsync( comfyWeb.APIs[ apiPath ] ) ) {
-          var result = await comfyWeb.APIs[ apiPath ]( qs, null, { req, res, params: apiRoute.params } );
+          var result = await Promise.resolve( comfyWeb.APIs[ apiPath ]( qs, null, { req, res, params: apiRoute.params } ) );
           if( isArray( result ) || isObject( result ) ) {
               if( !res.getHeader( "Content-Type" ) ) {
                   res.setHeader( 'Content-type', 'application/json' );
@@ -182,22 +160,6 @@ async function webHandler( req, res ) {
               }
               res.end( result );
           }
-        }
-        else {
-          var result = comfyWeb.APIs[ apiPath ]( qs, null, { req, res, params: apiRoute.params } );
-          if( isArray( result ) || isObject( result ) ) {
-              if( !res.getHeader( "Content-Type" ) ) {
-                  res.setHeader( 'Content-type', 'application/json' );
-              }
-              res.end( JSON.stringify( result ) );
-          }
-          else {
-              if( !res.getHeader( "Content-Type" ) ) {
-                  res.setHeader( 'Content-type', 'text/plain' );
-              }
-              res.end( result );
-          }
-        }
       }
     }
     else if( comfyWeb.Files && fileRoute ) {
@@ -206,43 +168,23 @@ async function webHandler( req, res ) {
         let pathname = path.join( path.resolve( "index.html" ), sanitizePath ).replace( /\/$/, "" );
         var qs = querystring.decode( req.url.split( "?" )[ 1 ] );
         if( fs.existsSync( pathname ) ) {
-            if( isAsync( comfyWeb.Files[ filePath ] ) ) {
-                await comfyWeb.Files[ filePath ]( qs, null, { req, res } );
-            }
-            else {
-                comfyWeb.Files[ filePath ]( qs, null, { req, res } );
-            }
+            await Promise.resolve( comfyWeb.Files[ filePath ]( qs, null, { req, res } ) );
             serveFile( pathname, res );
         }
         else {
           pathname = path.join( path.resolve( "./web" ), sanitizePath );
           if( fs.existsSync( pathname ) ) {
-              if( isAsync( comfyWeb.Files[ filePath ] ) ) {
-                  await comfyWeb.Files[ filePath ]( qs, null, { req, res } );
-              }
-              else {
-                  comfyWeb.Files[ filePath ]( qs, null, { req, res } );
-              }
+              await Promise.resolve( comfyWeb.Files[ filePath ]( qs, null, { req, res } ) );
               serveFile( pathname, res );
           }
           else {
             pathname = path.join( path.resolve( "./public" ), sanitizePath );
             if( fs.existsSync( pathname ) ) {
-                if( isAsync( comfyWeb.Files[ filePath ] ) ) {
-                    await comfyWeb.Files[ filePath ]( qs, null, { req, res } );
-                }
-                else {
-                    comfyWeb.Files[ filePath ]( qs, null, { req, res } );
-                }
+                await Promise.resolve( comfyWeb.Files[ filePath ]( qs, null, { req, res } ) );
                 serveFile( pathname, res );
             }
             else if( ( sanitizePath.endsWith( ".html" ) || sanitizePath.endsWith( ".css" ) ) && fs.existsSync( path.join( path.resolve( "./" ), sanitizePath ) ) ) {
-              if( isAsync( comfyWeb.Files[ filePath ] ) ) {
-                  await comfyWeb.Files[ filePath ]( qs, null, { req, res } );
-              }
-              else {
-                  comfyWeb.Files[ filePath ]( qs, null, { req, res } );
-              }
+              await Promise.resolve( comfyWeb.Files[ filePath ]( qs, null, { req, res } ) );
               serveFile( path.join( path.resolve( "./" ), sanitizePath ), res );
             }
             else {
