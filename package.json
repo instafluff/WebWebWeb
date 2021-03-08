@@ -25,6 +25,5 @@
   "bugs": {
     "url": "https://github.com/instafluff/WebWebWeb/issues"
   },
-  "homepage": "https://github.com/instafluff/WebWebWeb#readme",
-  "typings": "./types/index.d.ts"
+  "homepage": "https://github.com/instafluff/WebWebWeb#readme"
 }
