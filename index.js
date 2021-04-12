@@ -165,14 +165,25 @@ async function webHandler( req, res ) {
     else if( comfyWeb.Files && fileRoute ) {
         let filePath = fileRoute.route;
         const sanitizePath = path.normalize( urlPath ).replace( /^(\.\.[\/\\])+/, '' );
-        let pathname = path.join( path.resolve( "index.html" ), sanitizePath ).replace( /\/$/, "" );
+        let pathname = null;
+        if( comfyWeb.Settings.Directory ) {
+          pathname = path.join( comfyWeb.Settings.Directory, path.resolve( "index.html" ), sanitizePath ).replace( /\/$/, "" );
+        }
+        else {
+          pathname = path.join( path.resolve( "index.html" ), sanitizePath ).replace( /\/$/, "" );
+        }
         var qs = querystring.decode( req.url.split( "?" )[ 1 ] );
         if( fs.existsSync( pathname ) ) {
             await Promise.resolve( comfyWeb.Files[ filePath ]( qs, null, { req, res } ) );
             serveFile( pathname, res );
         }
         else {
-          pathname = path.join( path.resolve( "./web" ), sanitizePath );
+          if( comfyWeb.Settings.Directory ) {
+            pathname = path.join( path.resolve( comfyWeb.Settings.Directory ), sanitizePath );
+          }
+          else {
+            pathname = path.join( path.resolve( "./web" ), sanitizePath );
+          }
           if( fs.existsSync( pathname ) ) {
               await Promise.resolve( comfyWeb.Files[ filePath ]( qs, null, { req, res } ) );
               serveFile( pathname, res );
@@ -196,12 +207,23 @@ async function webHandler( req, res ) {
     }
     else {
       const sanitizePath = path.normalize( parsedUrl.pathname ).replace( /^(\.\.[\/\\])+/, '' );
-      let pathname = path.join( path.resolve( "index.html" ), sanitizePath ).replace( /\/$/, "" );
+      let pathname = null;
+      if( comfyWeb.Settings.Directory ) {
+        pathname = path.join( comfyWeb.Settings.Directory, path.resolve( "index.html" ), sanitizePath ).replace( /\/$/, "" );
+      }
+      else {
+        pathname = path.join( path.resolve( "index.html" ), sanitizePath ).replace( /\/$/, "" );
+      }
       if( fs.existsSync( pathname ) ) {
         serveFile( pathname, res );
       }
       else {
-        pathname = path.join( path.resolve( "./web" ), sanitizePath );
+        if( comfyWeb.Settings.Directory ) {
+          pathname = path.join( path.resolve( comfyWeb.Settings.Directory ), sanitizePath );
+        }
+        else {
+          pathname = path.join( path.resolve( "./web" ), sanitizePath );
+        }
         if( fs.existsSync( pathname ) ) {
           serveFile( pathname, res );
         }
@@ -223,7 +245,7 @@ async function webHandler( req, res ) {
   }
 }
 
-function startServer( port, { useCORS, Certificate, PrivateKey, CertificateChain } = { useCORS: true } ) {
+function startServer( port, { useCORS, Certificate, PrivateKey, CertificateChain, Directory } = { useCORS: true } ) {
   var server;
   isCORSEnabled = useCORS;
   if( Certificate && PrivateKey ) {
@@ -240,6 +262,7 @@ function startServer( port, { useCORS, Certificate, PrivateKey, CertificateChain
   else {
     server = require( 'http' ).createServer( webHandler );
   }
+  comfyWeb.Settings.Directory = Directory;
 
   server.listen( port, ( err ) => {
     if( err ) {
@@ -254,6 +277,7 @@ function startServer( port, { useCORS, Certificate, PrivateKey, CertificateChain
 var comfyWeb = {
   APIs: {},
   Files: {},
+  Settings: {},
   Run: startServer
 };
 

@@ -26,4 +26,4 @@ ComfyWeb.APIs[ "route/*" ] = ( qs, body, opts ) => {
     return opts.params;
 };
 
-ComfyWeb.Run( 8099 );
+ComfyWeb.Run( 8099, { Directory: "dir" } );
