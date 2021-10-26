@@ -1,5 +1,5 @@
 # WebWebWeb
-We built the Comfiest Way to make web APIs and static file servers live on Twitch for Coding Cafe!
+The zero-dependency alternative to ExpressJS. We built the Comfiest Way to make web APIs and static file servers live on Twitch for Coding Cafe!
 
 **WebWebWeb** lets you create a web server with APIs ***SUPER EASILY*** in just a few lines of code.
 
