@@ -105,33 +105,50 @@ async function webHandler( req, res ) {
     }
   }
 
-  const parsedUrl = url.parse( decodeURI( req.url ) );
-  if( req.url.startsWith( "/web" ) ||
-      req.url.startsWith( "/public" ) ) {
-    const sanitizePath = path.normalize( parsedUrl.pathname ).replace( /^(\.\.[\/\\])+/, '' );
-    let pathname = path.join( path.resolve( "." ), sanitizePath );
-    serveFile( pathname, res );
-  }
-  else {
-    let urlPath = comfyWeb.APIs[ parsedUrl.pathname ] ? parsedUrl.pathname : parsedUrl.pathname.substring( 1 );
-    // Find matching API route
-    let apiRoute = getMatchingRoute( Object.keys( comfyWeb.APIs ), urlPath );
-    let fileRoute = getMatchingRoute( Object.keys( comfyWeb.Files ), urlPath );
-    if( comfyWeb.APIs && apiRoute ) {
-        let apiPath = apiRoute.route;
-      var qs = querystring.decode( req.url.split( "?" )[ 1 ] );
-      if( req.method === "POST" ) {
-        let body = null;
-        req.on( 'data', chunk => {
-          if( body === null ) {
-            body = chunk;
-		  }
-		  else {
-            body = Buffer.concat([ body, chunk ]);
-		  }
-        });
-        req.on( 'end', async () => {
-            var result = await Promise.resolve( comfyWeb.APIs[ apiPath ]( qs, body, { req, res, params: apiRoute.params } ) );
+  try {
+    const parsedUrl = url.parse( decodeURI( req.url ) );
+    if( req.url.startsWith( "/web" ) ||
+        req.url.startsWith( "/public" ) ) {
+      const sanitizePath = path.normalize( parsedUrl.pathname ).replace( /^(\.\.[\/\\])+/, '' );
+      let pathname = path.join( path.resolve( "." ), sanitizePath );
+      serveFile( pathname, res );
+    }
+    else {
+      let urlPath = comfyWeb.APIs[ parsedUrl.pathname ] ? parsedUrl.pathname : parsedUrl.pathname.substring( 1 );
+      // Find matching API route
+      let apiRoute = getMatchingRoute( Object.keys( comfyWeb.APIs ), urlPath );
+      let fileRoute = getMatchingRoute( Object.keys( comfyWeb.Files ), urlPath );
+      if( comfyWeb.APIs && apiRoute ) {
+          let apiPath = apiRoute.route;
+        var qs = querystring.decode( req.url.split( "?" )[ 1 ] );
+        if( req.method === "POST" ) {
+          let body = null;
+          req.on( 'data', chunk => {
+            if( body === null ) {
+              body = chunk;
+        }
+        else {
+              body = Buffer.concat([ body, chunk ]);
+        }
+          });
+          req.on( 'end', async () => {
+              var result = await Promise.resolve( comfyWeb.APIs[ apiPath ]( qs, body, { req, res, params: apiRoute.params } ) );
+              if( isArray( result ) || isObject( result ) ) {
+                  if( !res.getHeader( "Content-Type" ) ) {
+                      res.setHeader( 'Content-type', 'application/json' );
+                  }
+                  res.end( JSON.stringify( result ) );
+              }
+              else {
+                  if( !res.getHeader( "Content-Type" ) ) {
+                      res.setHeader( 'Content-type', 'text/plain' );
+                  }
+                  res.end( result );
+              }
+          });
+        }
+        else {
+            var result = await Promise.resolve( comfyWeb.APIs[ apiPath ]( qs, null, { req, res, params: apiRoute.params } ) );
             if( isArray( result ) || isObject( result ) ) {
                 if( !res.getHeader( "Content-Type" ) ) {
                     res.setHeader( 'Content-type', 'application/json' );
@@ -144,27 +161,53 @@ async function webHandler( req, res ) {
                 }
                 res.end( result );
             }
-        });
+        }
       }
-      else {
-          var result = await Promise.resolve( comfyWeb.APIs[ apiPath ]( qs, null, { req, res, params: apiRoute.params } ) );
-          if( isArray( result ) || isObject( result ) ) {
-              if( !res.getHeader( "Content-Type" ) ) {
-                  res.setHeader( 'Content-type', 'application/json' );
-              }
-              res.end( JSON.stringify( result ) );
+      else if( comfyWeb.Files && fileRoute ) {
+          let filePath = fileRoute.route;
+          const sanitizePath = path.normalize( urlPath ).replace( /^(\.\.[\/\\])+/, '' );
+          let pathname = null;
+          if( comfyWeb.Settings.Directory ) {
+            pathname = path.join( comfyWeb.Settings.Directory, path.resolve( "index.html" ), sanitizePath ).replace( /\/$/, "" );
           }
           else {
-              if( !res.getHeader( "Content-Type" ) ) {
-                  res.setHeader( 'Content-type', 'text/plain' );
+            pathname = path.join( path.resolve( "index.html" ), sanitizePath ).replace( /\/$/, "" );
+          }
+          var qs = querystring.decode( req.url.split( "?" )[ 1 ] );
+          if( fs.existsSync( pathname ) ) {
+              await Promise.resolve( comfyWeb.Files[ filePath ]( qs, null, { req, res } ) );
+              serveFile( pathname, res );
+          }
+          else {
+            if( comfyWeb.Settings.Directory ) {
+              pathname = path.join( path.resolve( comfyWeb.Settings.Directory ), sanitizePath );
+            }
+            else {
+              pathname = path.join( path.resolve( "./web" ), sanitizePath );
+            }
+            if( fs.existsSync( pathname ) ) {
+                await Promise.resolve( comfyWeb.Files[ filePath ]( qs, null, { req, res } ) );
+                serveFile( pathname, res );
+            }
+            else {
+              pathname = path.join( path.resolve( "./public" ), sanitizePath );
+              if( fs.existsSync( pathname ) ) {
+                  await Promise.resolve( comfyWeb.Files[ filePath ]( qs, null, { req, res } ) );
+                  serveFile( pathname, res );
               }
-              res.end( result );
+              else if( ( sanitizePath.endsWith( ".html" ) || sanitizePath.endsWith( ".css" ) ) && fs.existsSync( path.join( path.resolve( "./" ), sanitizePath ) ) ) {
+                await Promise.resolve( comfyWeb.Files[ filePath ]( qs, null, { req, res } ) );
+                serveFile( path.join( path.resolve( "./" ), sanitizePath ), res );
+              }
+              else {
+                  res.statusCode = 500;
+                  res.end(`Error`);
+              }
+            }
           }
       }
-    }
-    else if( comfyWeb.Files && fileRoute ) {
-        let filePath = fileRoute.route;
-        const sanitizePath = path.normalize( urlPath ).replace( /^(\.\.[\/\\])+/, '' );
+      else {
+        const sanitizePath = path.normalize( parsedUrl.pathname ).replace( /^(\.\.[\/\\])+/, '' );
         let pathname = null;
         if( comfyWeb.Settings.Directory ) {
           pathname = path.join( comfyWeb.Settings.Directory, path.resolve( "index.html" ), sanitizePath ).replace( /\/$/, "" );
@@ -172,10 +215,8 @@ async function webHandler( req, res ) {
         else {
           pathname = path.join( path.resolve( "index.html" ), sanitizePath ).replace( /\/$/, "" );
         }
-        var qs = querystring.decode( req.url.split( "?" )[ 1 ] );
         if( fs.existsSync( pathname ) ) {
-            await Promise.resolve( comfyWeb.Files[ filePath ]( qs, null, { req, res } ) );
-            serveFile( pathname, res );
+          serveFile( pathname, res );
         }
         else {
           if( comfyWeb.Settings.Directory ) {
@@ -185,63 +226,29 @@ async function webHandler( req, res ) {
             pathname = path.join( path.resolve( "./web" ), sanitizePath );
           }
           if( fs.existsSync( pathname ) ) {
-              await Promise.resolve( comfyWeb.Files[ filePath ]( qs, null, { req, res } ) );
-              serveFile( pathname, res );
+            serveFile( pathname, res );
           }
           else {
             pathname = path.join( path.resolve( "./public" ), sanitizePath );
             if( fs.existsSync( pathname ) ) {
-                await Promise.resolve( comfyWeb.Files[ filePath ]( qs, null, { req, res } ) );
-                serveFile( pathname, res );
+              serveFile( pathname, res );
             }
             else if( ( sanitizePath.endsWith( ".html" ) || sanitizePath.endsWith( ".css" ) ) && fs.existsSync( path.join( path.resolve( "./" ), sanitizePath ) ) ) {
-              await Promise.resolve( comfyWeb.Files[ filePath ]( qs, null, { req, res } ) );
               serveFile( path.join( path.resolve( "./" ), sanitizePath ), res );
             }
             else {
-                res.statusCode = 500;
-                res.end(`Error`);
+              res.statusCode = 500;
+              res.end(`Error`);
             }
           }
         }
-    }
-    else {
-      const sanitizePath = path.normalize( parsedUrl.pathname ).replace( /^(\.\.[\/\\])+/, '' );
-      let pathname = null;
-      if( comfyWeb.Settings.Directory ) {
-        pathname = path.join( comfyWeb.Settings.Directory, path.resolve( "index.html" ), sanitizePath ).replace( /\/$/, "" );
-      }
-      else {
-        pathname = path.join( path.resolve( "index.html" ), sanitizePath ).replace( /\/$/, "" );
-      }
-      if( fs.existsSync( pathname ) ) {
-        serveFile( pathname, res );
-      }
-      else {
-        if( comfyWeb.Settings.Directory ) {
-          pathname = path.join( path.resolve( comfyWeb.Settings.Directory ), sanitizePath );
-        }
-        else {
-          pathname = path.join( path.resolve( "./web" ), sanitizePath );
-        }
-        if( fs.existsSync( pathname ) ) {
-          serveFile( pathname, res );
-        }
-        else {
-          pathname = path.join( path.resolve( "./public" ), sanitizePath );
-          if( fs.existsSync( pathname ) ) {
-            serveFile( pathname, res );
-          }
-          else if( ( sanitizePath.endsWith( ".html" ) || sanitizePath.endsWith( ".css" ) ) && fs.existsSync( path.join( path.resolve( "./" ), sanitizePath ) ) ) {
-            serveFile( path.join( path.resolve( "./" ), sanitizePath ), res );
-          }
-          else {
-            res.statusCode = 500;
-            res.end(`Error`);
-          }
-        }
       }
     }
+  }
+  catch( err ) {
+    console.error( "Web Request Error:", req.url, err );
+    res.statusCode = 500;
+    res.end(`Error`);
   }
 }
 
