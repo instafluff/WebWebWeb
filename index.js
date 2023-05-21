@@ -187,13 +187,13 @@ async function webHandler( req, res ) {
   }
 }
 
-function startServer( port, { useCORS, Certificate, PrivateKey, CertificateChain, Directory } = { useCORS: true } ) {
+async function startServer( port, { useCORS, Certificate, PrivateKey, CertificateChain, Directory } = { useCORS: true } ) {
   let server;
   isCORSEnabled = useCORS;
   if( Certificate && PrivateKey ) {
-    const privateKey = fs.readFileSync( PrivateKey, 'utf8' );
-    const certificate = fs.readFileSync( Certificate, 'utf8' );
-    const ca = fs.readFileSync( CertificateChain, 'utf8' );
+    const privateKey = await fs.readFile( PrivateKey, 'utf8' );
+    const certificate = await fs.readFile( Certificate, 'utf8' );
+    const ca = await fs.readFile( CertificateChain, 'utf8' );
     const credentials = {
       key: privateKey,
       cert: certificate,
