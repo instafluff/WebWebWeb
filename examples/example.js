@@ -26,4 +26,14 @@ ComfyWeb.APIs[ "route/*" ] = ( qs, body, opts ) => {
     return opts.params;
 };
 
+function sleep( ms ) {
+  return new Promise( resolve => setTimeout( resolve, ms ) );
+}
+
+ComfyWeb.APIs[ "async" ] = async ( qs ) => {
+  console.log( qs );
+  await sleep( 1000 );
+  return "complete";
+};
+
 ComfyWeb.Run( 8099, { Directory: "dir" } );

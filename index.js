@@ -1,7 +1,9 @@
 const url = require('url');
-const fs = require('fs');
+const fs = require('fs').promises;
 const path = require('path');
 const querystring = require( "querystring" );
+const http = require('http');
+const https = require('https');
 
 // Static File Serve Code based on https://adrianmejia.com/building-a-node-js-static-file-server-files-over-http-using-es6/
 const mimeType = {
@@ -21,12 +23,8 @@ const mimeType = {
   '.ttf': 'aplication/font-sfnt'
 };
 
-function isArray( o ) {
-    return ( !!o ) && ( o.constructor === Array );
-}
-
-function isObject( o ) {
-    return ( !!o ) && ( o.constructor === Object );
+function sanitizePath( filePath ) {
+  return path.normalize( filePath ).replace( /^(\.\.[\/\\])+/, '' );
 }
 
 function getMatchingRoute( routes, urlPath ) {
@@ -61,35 +59,49 @@ function getMatchingRoute( routes, urlPath ) {
     return null;
 }
 
-function serveFile( pathname, res ) {
-  fs.exists( pathname, function ( exist ) {
-    if( !exist ) {
-      res.statusCode = 404;
-      res.end(`File ${pathname} not found!`);
-      return;
-    }
-
-    if( fs.statSync(pathname).isDirectory() ) {
+async function serveFile( pathname, res ) {
+  try {
+    await fs.access( pathname );
+    const stat = await fs.stat( pathname );
+    if( stat.isDirectory() ) {
       pathname += '/index.html';
     }
-
-    fs.readFile( pathname, function( err, data ){
-      if( err ){
-        res.statusCode = 500;
-        res.end(`Error getting the file: ${err}.`);
-      }
-      else {
-        const ext = path.parse(pathname).ext;
-        if( !res.getHeader( "Content-Type" ) ) {
-            res.setHeader( 'Content-type', mimeType[ ext ] || 'text/plain' );
-        }
-        res.end( data );
-      }
-    });
-  });
+    const data = await fs.readFile( pathname );
+    const ext = path.parse( pathname ).ext;
+    if( !res.getHeader( 'Content-Type' ) ) {
+      res.setHeader( 'Content-type', mimeType[ext] || 'text/plain' );
+    }
+    res.end( data );
+  }
+  catch( err ) {
+    if( err.code === 'ENOENT' ) {
+      res.statusCode = 404;
+      res.end( `File ${pathname} not found!` );
+    }
+    else {
+      res.statusCode = 500;
+      res.end( `Error getting the file: ${err}.` );
+    }
+  }
 }
 
-var isCORSEnabled = true;
+function readPostData( req ) {
+  return new Promise( ( resolve, reject ) => {
+    let body = null;
+    req.on( 'data', chunk => {
+      if( body === null ) {
+        body = chunk;
+      }
+      else {
+        body = Buffer.concat([ body, chunk ]);
+      }
+    });
+    req.on( 'end', () => resolve( body ) );
+    req.on( 'error', ( err ) => reject( err ) );
+  } );
+}
+
+let isCORSEnabled = true;
 
 async function webHandler( req, res ) {
   if( isCORSEnabled ) {
@@ -106,154 +118,77 @@ async function webHandler( req, res ) {
   }
 
   try {
-    const parsedUrl = url.parse( decodeURI( req.url ) );
-    if( req.url.startsWith( "/web" ) ||
-        req.url.startsWith( "/public" ) ) {
-      const sanitizePath = path.normalize( parsedUrl.pathname ).replace( /^(\.\.[\/\\])+/, '' );
-      let pathname = path.join( path.resolve( "." ), sanitizePath );
-      serveFile( pathname, res );
+    const parsedUrl = new URL( req.url, `http://${req.headers.host}` );
+    const qs = querystring.decode( parsedUrl.searchParams.toString() );
+    
+    // Check for default file paths
+    if( req.url.startsWith( "/web" ) || req.url.startsWith( "/public" ) ) {
+      const sanitizedPath = sanitizePath( parsedUrl.pathname );
+      let pathname = path.join( path.resolve( "." ), sanitizedPath );
+      await serveFile( pathname, res );
+      return;
+    }
+
+    const urlPath = comfyWeb.APIs[ parsedUrl.pathname ] ? parsedUrl.pathname : parsedUrl.pathname.substring( 1 );
+    // Find matching API route
+    const apiRoute = getMatchingRoute( Object.keys( comfyWeb.APIs ), urlPath );
+    const fileRoute = getMatchingRoute( Object.keys( comfyWeb.Files ), urlPath );
+
+    if( comfyWeb.APIs && apiRoute ) {
+      // Handle API Request
+      const body = req.method === "POST" ? await readPostData( req ) : null;
+      const result = await comfyWeb.APIs[ apiRoute.route ]( qs, body, { req, res, params: apiRoute.params } );
+      if( !res.getHeader( "Content-Type" ) ) {
+        res.setHeader( 'Content-type', Array.isArray( result ) || typeof result === 'object' ? 'application/json' : 'text/plain' );
+      }
+      res.end( typeof result === 'object' ? JSON.stringify( result ) : result );
     }
     else {
-      let urlPath = comfyWeb.APIs[ parsedUrl.pathname ] ? parsedUrl.pathname : parsedUrl.pathname.substring( 1 );
-      // Find matching API route
-      let apiRoute = getMatchingRoute( Object.keys( comfyWeb.APIs ), urlPath );
-      let fileRoute = getMatchingRoute( Object.keys( comfyWeb.Files ), urlPath );
-      if( comfyWeb.APIs && apiRoute ) {
-          let apiPath = apiRoute.route;
-        var qs = querystring.decode( req.url.split( "?" )[ 1 ] );
-        if( req.method === "POST" ) {
-          let body = null;
-          req.on( 'data', chunk => {
-            if( body === null ) {
-              body = chunk;
-        }
-        else {
-              body = Buffer.concat([ body, chunk ]);
-        }
-          });
-          req.on( 'end', async () => {
-              var result = await Promise.resolve( comfyWeb.APIs[ apiPath ]( qs, body, { req, res, params: apiRoute.params } ) );
-              if( isArray( result ) || isObject( result ) ) {
-                  if( !res.getHeader( "Content-Type" ) ) {
-                      res.setHeader( 'Content-type', 'application/json' );
-                  }
-                  res.end( JSON.stringify( result ) );
-              }
-              else {
-                  if( !res.getHeader( "Content-Type" ) ) {
-                      res.setHeader( 'Content-type', 'text/plain' );
-                  }
-                  res.end( result );
-              }
-          });
-        }
-        else {
-            var result = await Promise.resolve( comfyWeb.APIs[ apiPath ]( qs, null, { req, res, params: apiRoute.params } ) );
-            if( isArray( result ) || isObject( result ) ) {
-                if( !res.getHeader( "Content-Type" ) ) {
-                    res.setHeader( 'Content-type', 'application/json' );
-                }
-                res.end( JSON.stringify( result ) );
-            }
-            else {
-                if( !res.getHeader( "Content-Type" ) ) {
-                    res.setHeader( 'Content-type', 'text/plain' );
-                }
-                res.end( result );
-            }
-        }
+      // Handle File/Default Request
+      const sanitizedPath = sanitizePath( parsedUrl.pathname );
+      // Check for index.html and default file paths
+      const possibleFilePaths = [
+        path.join( comfyWeb.Settings.Directory || ".", sanitizedPath ),
+        path.join( ".", "web", sanitizedPath ),
+        path.join( ".", "public", sanitizedPath ),
+        path.join( comfyWeb.Settings.Directory || ".", sanitizedPath, "index.html" ),
+        path.join( ".", "web", sanitizedPath, "index.html" ),
+        path.join( ".", "public", sanitizedPath, "index.html" ),
+      ];
+      if( sanitizedPath.endsWith( ".html" ) || sanitizedPath.endsWith( ".css" ) ) {
+        // Add root path as an additional possible path
+        possibleFilePaths.push( path.join( ".", sanitizedPath ) );
       }
-      else if( comfyWeb.Files && fileRoute ) {
-          let filePath = fileRoute.route;
-          const sanitizePath = path.normalize( urlPath ).replace( /^(\.\.[\/\\])+/, '' );
-          let pathname = null;
-          if( comfyWeb.Settings.Directory ) {
-            pathname = path.join( comfyWeb.Settings.Directory, path.resolve( "index.html" ), sanitizePath ).replace( /\/$/, "" );
+      for( const possiblePath of possibleFilePaths ) {
+        try {
+          await fs.access( possiblePath );
+          if( comfyWeb.Files && fileRoute ) {
+            await comfyWeb.Files[ filePath ]( qs, null, { req, res } );
           }
-          else {
-            pathname = path.join( path.resolve( "index.html" ), sanitizePath ).replace( /\/$/, "" );
-          }
-          var qs = querystring.decode( req.url.split( "?" )[ 1 ] );
-          if( fs.existsSync( pathname ) ) {
-              await Promise.resolve( comfyWeb.Files[ filePath ]( qs, null, { req, res } ) );
-              serveFile( pathname, res );
-          }
-          else {
-            if( comfyWeb.Settings.Directory ) {
-              pathname = path.join( path.resolve( comfyWeb.Settings.Directory ), sanitizePath );
-            }
-            else {
-              pathname = path.join( path.resolve( "./web" ), sanitizePath );
-            }
-            if( fs.existsSync( pathname ) ) {
-                await Promise.resolve( comfyWeb.Files[ filePath ]( qs, null, { req, res } ) );
-                serveFile( pathname, res );
-            }
-            else {
-              pathname = path.join( path.resolve( "./public" ), sanitizePath );
-              if( fs.existsSync( pathname ) ) {
-                  await Promise.resolve( comfyWeb.Files[ filePath ]( qs, null, { req, res } ) );
-                  serveFile( pathname, res );
-              }
-              else if( ( sanitizePath.endsWith( ".html" ) || sanitizePath.endsWith( ".css" ) ) && fs.existsSync( path.join( path.resolve( "./" ), sanitizePath ) ) ) {
-                await Promise.resolve( comfyWeb.Files[ filePath ]( qs, null, { req, res } ) );
-                serveFile( path.join( path.resolve( "./" ), sanitizePath ), res );
-              }
-              else {
-                  res.statusCode = 500;
-                  res.end(`Error`);
-              }
-            }
-          }
-      }
-      else {
-        const sanitizePath = path.normalize( parsedUrl.pathname ).replace( /^(\.\.[\/\\])+/, '' );
-        let pathname = null;
-        if( comfyWeb.Settings.Directory ) {
-          pathname = path.join( comfyWeb.Settings.Directory, path.resolve( "index.html" ), sanitizePath ).replace( /\/$/, "" );
+          await serveFile( possiblePath, res );
+          return;
         }
-        else {
-          pathname = path.join( path.resolve( "index.html" ), sanitizePath ).replace( /\/$/, "" );
-        }
-        if( fs.existsSync( pathname ) ) {
-          serveFile( pathname, res );
-        }
-        else {
-          if( comfyWeb.Settings.Directory ) {
-            pathname = path.join( path.resolve( comfyWeb.Settings.Directory ), sanitizePath );
-          }
-          else {
-            pathname = path.join( path.resolve( "./web" ), sanitizePath );
-          }
-          if( fs.existsSync( pathname ) ) {
-            serveFile( pathname, res );
-          }
-          else {
-            pathname = path.join( path.resolve( "./public" ), sanitizePath );
-            if( fs.existsSync( pathname ) ) {
-              serveFile( pathname, res );
-            }
-            else if( ( sanitizePath.endsWith( ".html" ) || sanitizePath.endsWith( ".css" ) ) && fs.existsSync( path.join( path.resolve( "./" ), sanitizePath ) ) ) {
-              serveFile( path.join( path.resolve( "./" ), sanitizePath ), res );
-            }
-            else {
-              res.statusCode = 500;
-              res.end(`Error`);
-            }
+        catch( err ) {
+          // Skip if file doesn't exist, otherwise throw an error
+          if( err.code !== 'ENOENT' ) {
+            throw err;
           }
         }
       }
+      // No file found
+      res.statusCode = 404;
+      res.end( `File not found` );
     }
   }
   catch( err ) {
     console.error( "Web Request Error:", req.url, err );
     res.statusCode = 500;
-    res.end(`Error`);
+    res.end( `Error` );
   }
 }
 
 function startServer( port, { useCORS, Certificate, PrivateKey, CertificateChain, Directory } = { useCORS: true } ) {
-  var server;
+  let server;
   isCORSEnabled = useCORS;
   if( Certificate && PrivateKey ) {
     const privateKey = fs.readFileSync( PrivateKey, 'utf8' );
@@ -281,7 +216,7 @@ function startServer( port, { useCORS, Certificate, PrivateKey, CertificateChain
   return server;
 }
 
-var comfyWeb = {
+let comfyWeb = {
   APIs: {},
   Files: {},
   Settings: {},
