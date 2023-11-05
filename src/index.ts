@@ -132,8 +132,7 @@ async function webHandler( req: http.IncomingMessage, res: http.ServerResponse )
 
 		const urlPath = comfyWeb.APIs[ parsedUrl.pathname ] ? parsedUrl.pathname : parsedUrl.pathname.substring( 1 );
 		// Find matching API route
-		const apiRoute = getMatchingRoute( Object.keys( comfyWeb.APIs ), urlPath );
-		const fileRoute = getMatchingRoute( Object.keys( comfyWeb.Files ), urlPath );
+		const apiRoute = comfyWeb.APIs[ urlPath ] ? { route: urlPath, params: [] } : getMatchingRoute( Object.keys( comfyWeb.APIs ), urlPath );
 
 		if( comfyWeb.APIs && apiRoute ) {
 			// Handle API Request
@@ -145,6 +144,7 @@ async function webHandler( req: http.IncomingMessage, res: http.ServerResponse )
 			res.end( typeof result === "object" ? JSON.stringify( result ) : result );
 		}
 		else {
+			const fileRoute = comfyWeb.Files[ urlPath ] ? { route: urlPath, params: [] } : getMatchingRoute( Object.keys( comfyWeb.Files ), urlPath );
 			// Handle File/Default Request
 			const sanitizedPath = sanitizePath( parsedUrl.pathname );
 			// Check for index.html and default file paths
